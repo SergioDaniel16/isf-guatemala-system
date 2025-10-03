@@ -1,43 +1,58 @@
 package org.isf.guatemala.service;
 
+import org.isf.guatemala.dto.request.EmpleadoRequestDTO;
+import org.isf.guatemala.dto.response.EmpleadoResponseDTO;
+import org.isf.guatemala.exception.ResourceNotFoundException;
+import org.isf.guatemala.mapper.EntityMapper;
 import org.isf.guatemala.model.Empleado;
 import org.isf.guatemala.repository.EmpleadoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
-import java.util.Optional;
 
 @Service
+@Transactional
 public class EmpleadoService {
     
     @Autowired
     private EmpleadoRepository empleadoRepository;
     
-    public List<Empleado> obtenerTodos() {
-        return empleadoRepository.findAll();
+    @Autowired
+    private EntityMapper mapper;
+    
+    public List<EmpleadoResponseDTO> obtenerTodos() {
+        List<Empleado> empleados = empleadoRepository.findAll();
+        return mapper.toEmpleadoResponseList(empleados);
     }
     
-    public Optional<Empleado> obtenerPorId(Long id) {
-        return empleadoRepository.findById(id);
+    public EmpleadoResponseDTO obtenerPorId(Long id) {
+        Empleado empleado = empleadoRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Empleado", "id", id));
+        return mapper.toEmpleadoResponse(empleado);
     }
     
-    public Empleado crear(Empleado empleado) {
-        // Validar que el contacto sea de 8 dígitos
-        if (empleado.getContacto() == null || empleado.getContacto().length() != 8) {
-            throw new RuntimeException("El contacto debe tener 8 dígitos");
-        }
-        return empleadoRepository.save(empleado);
+    public EmpleadoResponseDTO crear(EmpleadoRequestDTO dto) {
+        Empleado empleado = mapper.toEmpleadoEntity(dto);
+        Empleado empleadoGuardado = empleadoRepository.save(empleado);
+        return mapper.toEmpleadoResponse(empleadoGuardado);
     }
     
-    public Empleado actualizar(Long id, Empleado empleado) {
-        if (!empleadoRepository.existsById(id)) {
-            throw new RuntimeException("Empleado no encontrado");
-        }
-        empleado.setId(id);
-        return empleadoRepository.save(empleado);
+    public EmpleadoResponseDTO actualizar(Long id, EmpleadoRequestDTO dto) {
+        Empleado empleado = empleadoRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Empleado", "id", id));
+        
+        Empleado empleadoActualizado = mapper.toEmpleadoEntity(dto);
+        empleadoActualizado.setId(id);
+        
+        Empleado resultado = empleadoRepository.save(empleadoActualizado);
+        return mapper.toEmpleadoResponse(resultado);
     }
     
     public void eliminar(Long id) {
+        if (!empleadoRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Empleado", "id", id);
+        }
         empleadoRepository.deleteById(id);
     }
 }

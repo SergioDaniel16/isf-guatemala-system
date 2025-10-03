@@ -1,40 +1,45 @@
 package org.isf.guatemala.controller;
 
-import org.isf.guatemala.model.Puesto;
+import org.isf.guatemala.dto.request.PuestoRequestDTO;
+import org.isf.guatemala.dto.response.PuestoResponseDTO;
 import org.isf.guatemala.service.PuestoService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/puestos")
-@CrossOrigin(origins = "*")
+@Validated
 public class PuestoController {
     
     @Autowired
     private PuestoService puestoService;
     
     @GetMapping
-    public ResponseEntity<List<Puesto>> obtenerTodos() {
+    public ResponseEntity<List<PuestoResponseDTO>> obtenerTodos() {
         return ResponseEntity.ok(puestoService.obtenerTodos());
     }
     
     @GetMapping("/{id}")
-    public ResponseEntity<Puesto> obtenerPorId(@PathVariable Long id) {
-        return puestoService.obtenerPorId(id)
-            .map(ResponseEntity::ok)
-            .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<PuestoResponseDTO> obtenerPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(puestoService.obtenerPorId(id));
     }
     
     @PostMapping
-    public ResponseEntity<Puesto> crear(@RequestBody Puesto puesto) {
-        return ResponseEntity.ok(puestoService.crear(puesto));
+    public ResponseEntity<PuestoResponseDTO> crear(@Valid @RequestBody PuestoRequestDTO dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(puestoService.crear(dto));
     }
     
     @PutMapping("/{id}")
-    public ResponseEntity<Puesto> actualizar(@PathVariable Long id, @RequestBody Puesto puesto) {
-        return ResponseEntity.ok(puestoService.actualizar(id, puesto));
+    public ResponseEntity<PuestoResponseDTO> actualizar(
+        @PathVariable Long id, 
+        @Valid @RequestBody PuestoRequestDTO dto
+    ) {
+        return ResponseEntity.ok(puestoService.actualizar(id, dto));
     }
     
     @DeleteMapping("/{id}")

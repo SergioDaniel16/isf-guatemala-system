@@ -1,19 +1,25 @@
 package org.isf.guatemala.service;
 
+import org.isf.guatemala.dto.request.ControlKilometrajeRequestDTO;
+import org.isf.guatemala.dto.response.ControlKilometrajeResponseDTO;
+import org.isf.guatemala.exception.BusinessRuleException;
+import org.isf.guatemala.exception.ResourceNotFoundException;
+import org.isf.guatemala.mapper.EntityMapper;
 import org.isf.guatemala.model.ControlKilometraje;
 import org.isf.guatemala.model.Vehiculo;
 import org.isf.guatemala.repository.ControlKilometrajeRepository;
 import org.isf.guatemala.repository.VehiculoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @Service
+@Transactional
 public class ControlKilometrajeService {
     
     @Autowired
@@ -22,44 +28,60 @@ public class ControlKilometrajeService {
     @Autowired
     private VehiculoRepository vehiculoRepository;
     
+    @Autowired
+    private EntityMapper mapper;
+    
     private static final BigDecimal FACTOR_MILLAS_A_KM = new BigDecimal("1.609");
     private static final BigDecimal KM_BASE = new BigDecimal("50");
     
-    public List<ControlKilometraje> obtenerTodos() {
-        return controlKilometrajeRepository.findAll();
+    public List<ControlKilometrajeResponseDTO> obtenerTodos() {
+        List<ControlKilometraje> controles = controlKilometrajeRepository.findAll();
+        return mapper.toControlKilometrajeResponseList(controles);
     }
     
-    public Optional<ControlKilometraje> obtenerPorId(Long id) {
-        return controlKilometrajeRepository.findById(id);
+    public ControlKilometrajeResponseDTO obtenerPorId(Long id) {
+        ControlKilometraje control = controlKilometrajeRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Control de Kilometraje", "id", id));
+        return mapper.toControlKilometrajeResponse(control);
     }
     
-    public List<ControlKilometraje> obtenerViajesActivos() {
-        return controlKilometrajeRepository.findByEstado(ControlKilometraje.EstadoViaje.ACTIVO);
+    public List<ControlKilometrajeResponseDTO> obtenerViajesActivos() {
+        List<ControlKilometraje> controles = controlKilometrajeRepository
+            .findByEstado(ControlKilometraje.EstadoViaje.ACTIVO);
+        return mapper.toControlKilometrajeResponseList(controles);
     }
     
     // Iniciar un viaje (abrir viaje)
-    public ControlKilometraje iniciarViaje(ControlKilometraje controlKilometraje) {
-        Vehiculo vehiculo = vehiculoRepository.findById(controlKilometraje.getVehiculo().getId())
-            .orElseThrow(() -> new RuntimeException("Vehículo no encontrado"));
+    public ControlKilometrajeResponseDTO iniciarViaje(ControlKilometrajeRequestDTO dto) {
+        Vehiculo vehiculo = vehiculoRepository.findById(dto.getVehiculoId())
+            .orElseThrow(() -> new ResourceNotFoundException("Vehículo", "id", dto.getVehiculoId()));
+        
+        ControlKilometraje control = mapper.toControlKilometrajeEntity(dto);
         
         // Establecer millaje de salida desde el odómetro actual del vehículo
-        controlKilometraje.setMillajeSalida(vehiculo.getOdometroActual());
-        controlKilometraje.setEstado(ControlKilometraje.EstadoViaje.ACTIVO);
-        controlKilometraje.setFechaInicio(LocalDateTime.now());
+        control.setMillajeSalida(vehiculo.getOdometroActual());
+        control.setEstado(ControlKilometraje.EstadoViaje.ACTIVO);
+        control.setFechaInicio(LocalDateTime.now());
         
-        return controlKilometrajeRepository.save(controlKilometraje);
+        ControlKilometraje controlGuardado = controlKilometrajeRepository.save(control);
+        return mapper.toControlKilometrajeResponse(controlGuardado);
     }
     
     // Cerrar un viaje
-    public ControlKilometraje cerrarViaje(Long id, BigDecimal millajeEntrada, String fotoFinal) {
+    public ControlKilometrajeResponseDTO cerrarViaje(Long id, BigDecimal millajeEntrada, String fotoFinal) {
         ControlKilometraje control = controlKilometrajeRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Viaje no encontrado"));
+            .orElseThrow(() -> new ResourceNotFoundException("Control de Kilometraje", "id", id));
         
         if (control.getEstado() == ControlKilometraje.EstadoViaje.CERRADO) {
-            throw new RuntimeException("El viaje ya está cerrado");
+            throw new BusinessRuleException("El viaje ya está cerrado");
         }
         
         Vehiculo vehiculo = control.getVehiculo();
+        
+        // Validar que el millaje de entrada sea mayor al de salida
+        if (millajeEntrada.compareTo(control.getMillajeSalida()) <= 0) {
+            throw new BusinessRuleException("El millaje de entrada debe ser mayor al millaje de salida");
+        }
         
         // Establecer millaje de entrada
         control.setMillajeEntrada(millajeEntrada);
@@ -95,31 +117,43 @@ public class ControlKilometrajeService {
         control.setEstado(ControlKilometraje.EstadoViaje.CERRADO);
         control.setFechaFin(LocalDateTime.now());
         
-        return controlKilometrajeRepository.save(control);
+        ControlKilometraje controlActualizado = controlKilometrajeRepository.save(control);
+        return mapper.toControlKilometrajeResponse(controlActualizado);
     }
     
-    public ControlKilometraje actualizar(Long id, ControlKilometraje controlKilometraje) {
+    public ControlKilometrajeResponseDTO actualizar(Long id, ControlKilometrajeRequestDTO dto) {
         if (!controlKilometrajeRepository.existsById(id)) {
-            throw new RuntimeException("Control de kilometraje no encontrado");
+            throw new ResourceNotFoundException("Control de Kilometraje", "id", id);
         }
-        controlKilometraje.setId(id);
-        return controlKilometrajeRepository.save(controlKilometraje);
+        
+        ControlKilometraje control = mapper.toControlKilometrajeEntity(dto);
+        control.setId(id);
+        
+        ControlKilometraje controlActualizado = controlKilometrajeRepository.save(control);
+        return mapper.toControlKilometrajeResponse(controlActualizado);
     }
     
     public void eliminar(Long id) {
+        if (!controlKilometrajeRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Control de Kilometraje", "id", id);
+        }
         controlKilometrajeRepository.deleteById(id);
     }
     
     // Métodos de filtrado para reportes
-    public List<ControlKilometraje> obtenerPorProyecto(Long proyectoId) {
-        return controlKilometrajeRepository.findByProyectoId(proyectoId);
+    public List<ControlKilometrajeResponseDTO> obtenerPorProyecto(Long proyectoId) {
+        List<ControlKilometraje> controles = controlKilometrajeRepository.findByProyectoId(proyectoId);
+        return mapper.toControlKilometrajeResponseList(controles);
     }
     
-    public List<ControlKilometraje> obtenerPorVehiculo(Long vehiculoId) {
-        return controlKilometrajeRepository.findByVehiculoId(vehiculoId);
+    public List<ControlKilometrajeResponseDTO> obtenerPorVehiculo(Long vehiculoId) {
+        List<ControlKilometraje> controles = controlKilometrajeRepository.findByVehiculoId(vehiculoId);
+        return mapper.toControlKilometrajeResponseList(controles);
     }
     
-    public List<ControlKilometraje> obtenerPorRangoFechas(LocalDate fechaInicio, LocalDate fechaFin) {
-        return controlKilometrajeRepository.findByFechaBetween(fechaInicio, fechaFin);
+    public List<ControlKilometrajeResponseDTO> obtenerPorRangoFechas(LocalDate fechaInicio, LocalDate fechaFin) {
+        List<ControlKilometraje> controles = controlKilometrajeRepository
+            .findByFechaBetween(fechaInicio, fechaFin);
+        return mapper.toControlKilometrajeResponseList(controles);
     }
 }

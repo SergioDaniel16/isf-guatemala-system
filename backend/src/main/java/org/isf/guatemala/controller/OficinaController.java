@@ -1,40 +1,45 @@
 package org.isf.guatemala.controller;
 
-import org.isf.guatemala.model.Oficina;
+import org.isf.guatemala.dto.request.OficinaRequestDTO;
+import org.isf.guatemala.dto.response.OficinaResponseDTO;
 import org.isf.guatemala.service.OficinaService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/oficinas")
-@CrossOrigin(origins = "*")
+@Validated
 public class OficinaController {
     
     @Autowired
     private OficinaService oficinaService;
     
     @GetMapping
-    public ResponseEntity<List<Oficina>> obtenerTodas() {
+    public ResponseEntity<List<OficinaResponseDTO>> obtenerTodas() {
         return ResponseEntity.ok(oficinaService.obtenerTodas());
     }
     
     @GetMapping("/{id}")
-    public ResponseEntity<Oficina> obtenerPorId(@PathVariable Long id) {
-        return oficinaService.obtenerPorId(id)
-            .map(ResponseEntity::ok)
-            .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<OficinaResponseDTO> obtenerPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(oficinaService.obtenerPorId(id));
     }
     
     @PostMapping
-    public ResponseEntity<Oficina> crear(@RequestBody Oficina oficina) {
-        return ResponseEntity.ok(oficinaService.crear(oficina));
+    public ResponseEntity<OficinaResponseDTO> crear(@Valid @RequestBody OficinaRequestDTO dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(oficinaService.crear(dto));
     }
     
     @PutMapping("/{id}")
-    public ResponseEntity<Oficina> actualizar(@PathVariable Long id, @RequestBody Oficina oficina) {
-        return ResponseEntity.ok(oficinaService.actualizar(id, oficina));
+    public ResponseEntity<OficinaResponseDTO> actualizar(
+        @PathVariable Long id, 
+        @Valid @RequestBody OficinaRequestDTO dto
+    ) {
+        return ResponseEntity.ok(oficinaService.actualizar(id, dto));
     }
     
     @DeleteMapping("/{id}")

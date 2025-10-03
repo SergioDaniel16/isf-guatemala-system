@@ -1,45 +1,50 @@
 package org.isf.guatemala.controller;
 
-import org.isf.guatemala.model.Vehiculo;
+import org.isf.guatemala.dto.request.VehiculoRequestDTO;
+import org.isf.guatemala.dto.response.VehiculoResponseDTO;
 import org.isf.guatemala.service.VehiculoService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/vehiculos")
-@CrossOrigin(origins = "*")
+@Validated
 public class VehiculoController {
     
     @Autowired
     private VehiculoService vehiculoService;
     
     @GetMapping
-    public ResponseEntity<List<Vehiculo>> obtenerTodos() {
+    public ResponseEntity<List<VehiculoResponseDTO>> obtenerTodos() {
         return ResponseEntity.ok(vehiculoService.obtenerTodos());
     }
     
     @GetMapping("/activos")
-    public ResponseEntity<List<Vehiculo>> obtenerActivos() {
+    public ResponseEntity<List<VehiculoResponseDTO>> obtenerActivos() {
         return ResponseEntity.ok(vehiculoService.obtenerActivos());
     }
     
     @GetMapping("/{id}")
-    public ResponseEntity<Vehiculo> obtenerPorId(@PathVariable Long id) {
-        return vehiculoService.obtenerPorId(id)
-            .map(ResponseEntity::ok)
-            .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<VehiculoResponseDTO> obtenerPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(vehiculoService.obtenerPorId(id));
     }
     
     @PostMapping
-    public ResponseEntity<Vehiculo> crear(@RequestBody Vehiculo vehiculo) {
-        return ResponseEntity.ok(vehiculoService.crear(vehiculo));
+    public ResponseEntity<VehiculoResponseDTO> crear(@Valid @RequestBody VehiculoRequestDTO dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(vehiculoService.crear(dto));
     }
     
     @PutMapping("/{id}")
-    public ResponseEntity<Vehiculo> actualizar(@PathVariable Long id, @RequestBody Vehiculo vehiculo) {
-        return ResponseEntity.ok(vehiculoService.actualizar(id, vehiculo));
+    public ResponseEntity<VehiculoResponseDTO> actualizar(
+        @PathVariable Long id, 
+        @Valid @RequestBody VehiculoRequestDTO dto
+    ) {
+        return ResponseEntity.ok(vehiculoService.actualizar(id, dto));
     }
     
     @DeleteMapping("/{id}")

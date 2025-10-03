@@ -1,45 +1,50 @@
 package org.isf.guatemala.controller;
 
-import org.isf.guatemala.model.Proyecto;
+import org.isf.guatemala.dto.request.ProyectoRequestDTO;
+import org.isf.guatemala.dto.response.ProyectoResponseDTO;
 import org.isf.guatemala.service.ProyectoService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/proyectos")
-@CrossOrigin(origins = "*")
+@Validated
 public class ProyectoController {
     
     @Autowired
     private ProyectoService proyectoService;
     
     @GetMapping
-    public ResponseEntity<List<Proyecto>> obtenerTodos() {
+    public ResponseEntity<List<ProyectoResponseDTO>> obtenerTodos() {
         return ResponseEntity.ok(proyectoService.obtenerTodos());
     }
     
     @GetMapping("/{id}")
-    public ResponseEntity<Proyecto> obtenerPorId(@PathVariable Long id) {
-        return proyectoService.obtenerPorId(id)
-            .map(ResponseEntity::ok)
-            .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<ProyectoResponseDTO> obtenerPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(proyectoService.obtenerPorId(id));
     }
     
     @GetMapping("/oficina/{oficinaId}")
-    public ResponseEntity<List<Proyecto>> obtenerPorOficina(@PathVariable Long oficinaId) {
+    public ResponseEntity<List<ProyectoResponseDTO>> obtenerPorOficina(@PathVariable Long oficinaId) {
         return ResponseEntity.ok(proyectoService.obtenerPorOficina(oficinaId));
     }
     
     @PostMapping
-    public ResponseEntity<Proyecto> crear(@RequestBody Proyecto proyecto) {
-        return ResponseEntity.ok(proyectoService.crear(proyecto));
+    public ResponseEntity<ProyectoResponseDTO> crear(@Valid @RequestBody ProyectoRequestDTO dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(proyectoService.crear(dto));
     }
     
     @PutMapping("/{id}")
-    public ResponseEntity<Proyecto> actualizar(@PathVariable Long id, @RequestBody Proyecto proyecto) {
-        return ResponseEntity.ok(proyectoService.actualizar(id, proyecto));
+    public ResponseEntity<ProyectoResponseDTO> actualizar(
+        @PathVariable Long id, 
+        @Valid @RequestBody ProyectoRequestDTO dto
+    ) {
+        return ResponseEntity.ok(proyectoService.actualizar(id, dto));
     }
     
     @DeleteMapping("/{id}")

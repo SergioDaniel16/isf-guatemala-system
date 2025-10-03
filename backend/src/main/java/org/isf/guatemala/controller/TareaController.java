@@ -1,40 +1,45 @@
 package org.isf.guatemala.controller;
 
-import org.isf.guatemala.model.Tarea;
+import org.isf.guatemala.dto.request.TareaRequestDTO;
+import org.isf.guatemala.dto.response.TareaResponseDTO;
 import org.isf.guatemala.service.TareaService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/tareas")
-@CrossOrigin(origins = "*")
+@Validated
 public class TareaController {
     
     @Autowired
     private TareaService tareaService;
     
     @GetMapping
-    public ResponseEntity<List<Tarea>> obtenerTodas() {
+    public ResponseEntity<List<TareaResponseDTO>> obtenerTodas() {
         return ResponseEntity.ok(tareaService.obtenerTodas());
     }
     
     @GetMapping("/{id}")
-    public ResponseEntity<Tarea> obtenerPorId(@PathVariable Long id) {
-        return tareaService.obtenerPorId(id)
-            .map(ResponseEntity::ok)
-            .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<TareaResponseDTO> obtenerPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(tareaService.obtenerPorId(id));
     }
     
     @PostMapping
-    public ResponseEntity<Tarea> crear(@RequestBody Tarea tarea) {
-        return ResponseEntity.ok(tareaService.crear(tarea));
+    public ResponseEntity<TareaResponseDTO> crear(@Valid @RequestBody TareaRequestDTO dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(tareaService.crear(dto));
     }
     
     @PutMapping("/{id}")
-    public ResponseEntity<Tarea> actualizar(@PathVariable Long id, @RequestBody Tarea tarea) {
-        return ResponseEntity.ok(tareaService.actualizar(id, tarea));
+    public ResponseEntity<TareaResponseDTO> actualizar(
+        @PathVariable Long id, 
+        @Valid @RequestBody TareaRequestDTO dto
+    ) {
+        return ResponseEntity.ok(tareaService.actualizar(id, dto));
     }
     
     @DeleteMapping("/{id}")

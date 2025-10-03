@@ -1,42 +1,47 @@
 package org.isf.guatemala.controller;
 
-import org.isf.guatemala.model.RegistroHoras;
+import org.isf.guatemala.dto.request.RegistroHorasRequestDTO;
+import org.isf.guatemala.dto.response.RegistroHorasResponseDTO;
 import org.isf.guatemala.service.RegistroHorasService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/registro-horas")
-@CrossOrigin(origins = "*")
+@Validated
 public class RegistroHorasController {
     
     @Autowired
     private RegistroHorasService registroHorasService;
     
     @GetMapping
-    public ResponseEntity<List<RegistroHoras>> obtenerTodos() {
+    public ResponseEntity<List<RegistroHorasResponseDTO>> obtenerTodos() {
         return ResponseEntity.ok(registroHorasService.obtenerTodos());
     }
     
     @GetMapping("/{id}")
-    public ResponseEntity<RegistroHoras> obtenerPorId(@PathVariable Long id) {
-        return registroHorasService.obtenerPorId(id)
-            .map(ResponseEntity::ok)
-            .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<RegistroHorasResponseDTO> obtenerPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(registroHorasService.obtenerPorId(id));
     }
     
     @PostMapping
-    public ResponseEntity<RegistroHoras> crear(@RequestBody RegistroHoras registroHoras) {
-        return ResponseEntity.ok(registroHorasService.crear(registroHoras));
+    public ResponseEntity<RegistroHorasResponseDTO> crear(@Valid @RequestBody RegistroHorasRequestDTO dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(registroHorasService.crear(dto));
     }
     
     @PutMapping("/{id}")
-    public ResponseEntity<RegistroHoras> actualizar(@PathVariable Long id, @RequestBody RegistroHoras registroHoras) {
-        return ResponseEntity.ok(registroHorasService.actualizar(id, registroHoras));
+    public ResponseEntity<RegistroHorasResponseDTO> actualizar(
+        @PathVariable Long id, 
+        @Valid @RequestBody RegistroHorasRequestDTO dto
+    ) {
+        return ResponseEntity.ok(registroHorasService.actualizar(id, dto));
     }
     
     @DeleteMapping("/{id}")
@@ -45,20 +50,20 @@ public class RegistroHorasController {
         return ResponseEntity.noContent().build();
     }
     
-    // Endpoints para reportes y filtros
+    // Endpoints para reportes
     
     @GetMapping("/proyecto/{proyectoId}")
-    public ResponseEntity<List<RegistroHoras>> obtenerPorProyecto(@PathVariable Long proyectoId) {
+    public ResponseEntity<List<RegistroHorasResponseDTO>> obtenerPorProyecto(@PathVariable Long proyectoId) {
         return ResponseEntity.ok(registroHorasService.obtenerPorProyecto(proyectoId));
     }
     
     @GetMapping("/empleado/{empleadoId}")
-    public ResponseEntity<List<RegistroHoras>> obtenerPorEmpleado(@PathVariable Long empleadoId) {
+    public ResponseEntity<List<RegistroHorasResponseDTO>> obtenerPorEmpleado(@PathVariable Long empleadoId) {
         return ResponseEntity.ok(registroHorasService.obtenerPorEmpleado(empleadoId));
     }
     
     @GetMapping("/rango-fechas")
-    public ResponseEntity<List<RegistroHoras>> obtenerPorRangoFechas(
+    public ResponseEntity<List<RegistroHorasResponseDTO>> obtenerPorRangoFechas(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin
     ) {
@@ -66,7 +71,7 @@ public class RegistroHorasController {
     }
     
     @GetMapping("/filtros")
-    public ResponseEntity<List<RegistroHoras>> obtenerConFiltros(
+    public ResponseEntity<List<RegistroHorasResponseDTO>> obtenerConFiltros(
         @RequestParam(required = false) Long proyectoId,
         @RequestParam(required = false) Long empleadoId,
         @RequestParam(required = false) Boolean esCobrable,

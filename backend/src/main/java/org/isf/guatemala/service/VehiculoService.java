@@ -1,46 +1,74 @@
 package org.isf.guatemala.service;
 
+import org.isf.guatemala.dto.request.VehiculoRequestDTO;
+import org.isf.guatemala.dto.response.VehiculoResponseDTO;
+import org.isf.guatemala.exception.DuplicateResourceException;
+import org.isf.guatemala.exception.ResourceNotFoundException;
+import org.isf.guatemala.mapper.EntityMapper;
 import org.isf.guatemala.model.Vehiculo;
 import org.isf.guatemala.repository.VehiculoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
-import java.util.Optional;
 
 @Service
+@Transactional
 public class VehiculoService {
     
     @Autowired
     private VehiculoRepository vehiculoRepository;
     
-    public List<Vehiculo> obtenerTodos() {
-        return vehiculoRepository.findAll();
+    @Autowired
+    private EntityMapper mapper;
+    
+    public List<VehiculoResponseDTO> obtenerTodos() {
+        List<Vehiculo> vehiculos = vehiculoRepository.findAll();
+        return mapper.toVehiculoResponseList(vehiculos);
     }
     
-    public List<Vehiculo> obtenerActivos() {
-        return vehiculoRepository.findByActivo(true);
+    public List<VehiculoResponseDTO> obtenerActivos() {
+        List<Vehiculo> vehiculos = vehiculoRepository.findByActivo(true);
+        return mapper.toVehiculoResponseList(vehiculos);
     }
     
-    public Optional<Vehiculo> obtenerPorId(Long id) {
-        return vehiculoRepository.findById(id);
+    public VehiculoResponseDTO obtenerPorId(Long id) {
+        Vehiculo vehiculo = vehiculoRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Vehículo", "id", id));
+        return mapper.toVehiculoResponse(vehiculo);
     }
     
-    public Vehiculo crear(Vehiculo vehiculo) {
-        if (vehiculoRepository.existsByPlaca(vehiculo.getPlaca())) {
-            throw new RuntimeException("Ya existe un vehículo con esa placa");
+    public VehiculoResponseDTO crear(VehiculoRequestDTO dto) {
+        if (vehiculoRepository.existsByPlaca(dto.getPlaca())) {
+            throw new DuplicateResourceException("Vehículo", "placa", dto.getPlaca());
         }
-        return vehiculoRepository.save(vehiculo);
+        
+        Vehiculo vehiculo = mapper.toVehiculoEntity(dto);
+        Vehiculo vehiculoGuardado = vehiculoRepository.save(vehiculo);
+        return mapper.toVehiculoResponse(vehiculoGuardado);
     }
     
-    public Vehiculo actualizar(Long id, Vehiculo vehiculo) {
-        if (!vehiculoRepository.existsById(id)) {
-            throw new RuntimeException("Vehículo no encontrado");
+    public VehiculoResponseDTO actualizar(Long id, VehiculoRequestDTO dto) {
+        Vehiculo vehiculo = vehiculoRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Vehículo", "id", id));
+        
+        // Verificar si la nueva placa ya existe en otro vehículo
+        if (!vehiculo.getPlaca().equals(dto.getPlaca()) && 
+            vehiculoRepository.existsByPlaca(dto.getPlaca())) {
+            throw new DuplicateResourceException("Vehículo", "placa", dto.getPlaca());
         }
-        vehiculo.setId(id);
-        return vehiculoRepository.save(vehiculo);
+        
+        Vehiculo vehiculoActualizado = mapper.toVehiculoEntity(dto);
+        vehiculoActualizado.setId(id);
+        
+        Vehiculo resultado = vehiculoRepository.save(vehiculoActualizado);
+        return mapper.toVehiculoResponse(resultado);
     }
     
     public void eliminar(Long id) {
+        if (!vehiculoRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Vehículo", "id", id);
+        }
         vehiculoRepository.deleteById(id);
     }
 }
